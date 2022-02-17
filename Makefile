@@ -1,8 +1,11 @@
 CC = gcc
 CFLAGS = -g -I -std=gnu99
-all: master
+all: master slave
 
 master: config.h master.c
+	$(CC) -o $@ $^ $(CFLAGS)
+
+slave: config.h slave.c
 	$(CC) -o $@ $^ $(CFLAGS)
 
 clean:
