@@ -9,4 +9,4 @@ slave: config.h slave.c
 	$(CC) -o $@ $^ $(CFLAGS)
 
 clean:
-	rm master slave logfile.*
+	rm master slave cstest logfile.*

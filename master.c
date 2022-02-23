@@ -1,5 +1,10 @@
 #include "config.h"
 
+//globals
+bool * choosing_ptr;
+int * numbers_ptr;
+int choosing_id, numbers_id;
+
 void oot_handler()
 {
     //handler to call the out of time error function 
@@ -25,12 +30,15 @@ void error_fork()
     exit(-1);
 }
 
-void cleanup_shm(int nproc, int * segIDs)
+void cleanup_shm()
 {
-    for (int i = 0; i < nproc; i++)
-    {
-        shmctl(segIDs[i], IPC_RMID, 0);
-    }
+    //Detach shared memory
+    shmdt(choosing_ptr);
+    shmdt(numbers_ptr);
+
+    //Remove shared memory
+    shmctl(choosing_id, IPC_RMID, NULL);
+    shmctl(numbers_id, IPC_RMID, NULL);
 }
 
 int main(int argc, char *argv[])
@@ -74,27 +82,42 @@ int main(int argc, char *argv[])
     bool * choosing = malloc(sizeof(bool) * n);
     int * number = malloc(sizeof(int) * n);
     //Initialize both arrays
-    for (int i = 0; i < n; i++)
-    {
-        choosing[i] = 0;
-    }
-    for (int i = 0; i < n; i++)
-    {
-        number[i] = 0;
-    }
-    //Allocate shared memory
-    for (int i = 0; i < n; i++)
-    {
-        choosing[i] = shmget(IPC_PRIVATE, sizeof(bool), IPC_CREAT);
-    }
-    for (int i = 0; i < n; i++)
-    {
-        number[i] = shmget(IPC_PRIVATE, sizeof(bool), IPC_CREAT);
+    key_t choosing_key = ftok("Makefile", 'a');
+    choosing_id = shmget(choosing_key, sizeof(bool) * 20, IPC_CREAT | 0666);
+
+    key_t numbers_key = ftok(".", 'a');
+    numbers_id = shmget(numbers_key, sizeof(int) * 20, IPC_CREAT | 0666);
+
+    if (choosing_id == -1){
+        perror("monitor.c: Error: Shared memory (buffer) could not be created");
+        printf("exiting\n\n");
+        //early cleanup
+        exit(0);
     }
 
+    if (numbers_id == -1){
+        perror("monitor.c: Error: Shared memory (buffer) could not be created");
+        printf("exiting\n\n");
+        //early cleanup
+        exit(0);
+    }
+
+    //shm has been allocated, now we can attach
+    choosing_ptr = (bool *)shmat(choosing_id, 0, 0);
+    numbers_ptr = (int *)shmat(numbers_id, 0, 0);
+
+    for (int i = 0; i < n; i++)
+    {
+        choosing_ptr[i] = false;
+    }
+    for (int i = 0; i < n; i++)
+    {
+        numbers_ptr[i] = 0;
+    }
+    
     for (int i = 0; i < n - 1; i++)
     {
-        //pid = fork();
+        pid = fork();
 
         if (pid == -1)
         {
@@ -104,8 +127,10 @@ int main(int argc, char *argv[])
 
         if (pid == 0)
         {
+            char * pnum = malloc(sizeof(char) * 3);
+            sprintf(pnum, "%d", i + 1);
             //this is what the child will do
-            //execl("./slave", itoa(i)); // replaces the child fork with an instance of child, with its process number passed to it
+            execl("./slave", "./slave", pnum, NULL); // replaces the child fork with an instance of child, with its process number passed to it
         }
         else
         {
@@ -120,11 +145,7 @@ int main(int argc, char *argv[])
     wait(NULL); // wait for all the children to exit
 
     //Clean shared memory for choosing, then for number
-    for (int i = 0; i < n; i++)
-    {
-        shmctl(choosing[i], IPC_RMID, 0);
-    }
-    cleanup_shm(n, number);
+    cleanup_shm();
 
     exit(0);
 }

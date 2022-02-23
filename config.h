@@ -13,8 +13,7 @@
 #include <sys/ipc.h>
 #include <errno.h>
 
-int * allocateSMem(int);
-void deallocateSMem(int, int *);
+void cleanup_shm();
 void oot_handler();
 void cc_handler();
 void error_oot();
