@@ -10,4 +10,4 @@ early if an alarm goes off, or if the master recieves a CTRL-C. The master also 
  Build Instructions (Linux Terminal): make
  Delete master and slave Executables, Logfiles, and Cstest: make clean
  How to Invoke: ./master -t (Seconds until Timeout) (Number of Processes)
- 
+ Version Control on Github: https://github.com/rwk2f6/cs4760_p2
