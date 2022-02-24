@@ -20,3 +20,6 @@ void error_cc();
 void error_oot();
 void error_fork();
 int maxValue(int *, int);
+void print_choosing(int);
+void print_numbers(int);
+void cleanup();

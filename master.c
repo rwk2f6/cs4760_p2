@@ -5,6 +5,7 @@ bool * choosing_ptr;
 int * numbers_ptr;
 int choosing_id, numbers_id, numofproc;
 int * pid_list = NULL;
+FILE * masterlog = NULL;
 
 void cc_handler()
 {
@@ -18,11 +19,19 @@ void error_cc()
     //go through pid list and remove still running children
     fprintf(stderr, "Master recieved 'Ctrl-C', terminating...\n");
 
-    cleanup_shm();
-
     for (int i = 0; i < numofproc; i++)
     {
         kill(pid_list[i], SIGTERM);
+    }
+
+    while(wait(NULL) > 0);
+
+    cleanup_shm();
+
+    if(masterlog != NULL)
+    {
+        fprintf(masterlog, "Master closing due to CTRL-C...\n");
+        fclose(masterlog);
     }
 
     exit(-1);
@@ -40,11 +49,19 @@ void error_oot()
     //go through pid list and remove still running children
     fprintf(stderr, "Master reached max time, terminating...\n");
 
-    cleanup_shm();
-
     for (int i = 0; i < numofproc; i++)
     {
         kill(pid_list[i], SIGTERM);
+    }
+
+    while(wait(NULL) > 0);
+
+    cleanup_shm();
+
+    if(masterlog != NULL)
+    {
+        fprintf(masterlog, "Master closing due to Sigalrm...\n");
+        fclose(masterlog);
     }
 
     exit(-1);
@@ -84,6 +101,16 @@ int main(int argc, char *argv[])
     signal(SIGINT, cc_handler);
 
     int pid, opt, ss = 100, n = 20, max_sec = 100, max_n = 20;
+
+    time_t T;
+    struct tm tm;
+
+    T = time(NULL);
+    tm = *localtime(&T);
+
+    masterlog = fopen("logfile.master", "a");
+
+    fprintf(masterlog, "Master process began...\n");
 
     while ((opt = getopt(argc, argv, "t:")) != -1)
     {
@@ -154,6 +181,11 @@ int main(int argc, char *argv[])
     
     for (int i = 0; i < n; i++)
     {
+        T = time(NULL);
+        tm = *localtime(&T);
+
+        fprintf(masterlog, "Forking child process %d\n", i + 1);
+
         pid = fork();
 
         if (pid == -1)
@@ -188,6 +220,13 @@ int main(int argc, char *argv[])
     printf("Finished waiting for children, cleaning up memory and exiting...\n");
 
     cleanup_shm();
+
+    T = time(NULL);
+    tm = *localtime(&T);
+
+    fprintf(masterlog, "Shared memory detached and deallocated, closing master process\n");
+
+    fclose(masterlog);
 
     exit(0);
 }
